@@ -92,12 +92,12 @@ pub async fn request_async(
     url: &str,
     body: Option<String>,
 ) -> Result<String, String> {
-    println!("Sending Beatmap2.5");
+    
     let client = Client::new();
-    println!("Sending Beatmap3");
+
     // Construction de la requête
     let request = client.post(url);
-    println!("Sending Beatmap 4");
+
     // Ajout du corps à la requête s'il est présent
     let request = if let Some(body_content) = body {
         request.body(body_content)

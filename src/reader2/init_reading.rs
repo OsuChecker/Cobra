@@ -90,7 +90,7 @@ fn mods_to_string(mod_bits: u32) -> String {
 
     }
 
-    mod_list.join("") // Concatène tout avec des virgules
+    mod_list.join(",") // Concatène tout avec des virgules
 }
 pub fn send_score(p : &Process, state: &mut State) -> bool{
 
