@@ -1,5 +1,6 @@
-use crate::structs::{ OutputValues, State};
+use std::collections::HashMap;
 use rosu_mem::process::{Process, ProcessTraits};
+use crate::reader::structs::{Hit, State};
 
 pub fn get_result_username(p: &Process, state: &mut State) -> String {
     let ruleset_addr = p.read_i32(state.addresses.rulesets - 0xb).unwrap();
@@ -57,54 +58,56 @@ pub fn get_result_hit_miss(p: &Process, state: &mut State) -> i16 {
     return p.read_i16(result_base + 0x92).unwrap();
 }
 
-fn calculate_accuracy(
-    gamemode: u8,
-    hit_300: i16,
-    hit_100: i16,
-    hit_50: i16,
-    hit_geki: i16,
-    hit_katu: i16,
-    hit_miss: i16,
-) -> f64 {
-    match gamemode {
-        0 => {
-            (hit_300 as f64 * 6. + hit_100 as f64 * 2. + hit_50 as f64)
-                / ((hit_300 + hit_100 + hit_50 + hit_miss) as f64 * 6.)
-        }
-        1 => {
-            (hit_300 as f64 * 2. + hit_100 as f64)
-                / ((hit_300 + hit_100 + hit_50 + hit_miss) as f64 * 2.)
-        }
-        2 => {
-            (hit_300 + hit_100 + hit_50) as f64
-                / (hit_300 + hit_100 + hit_50 + hit_katu + hit_miss) as f64
-        }
-        3 => {
-            ((hit_geki + hit_300) as f64 * 6.
-                + hit_katu as f64 * 4.
-                + hit_100 as f64 * 2.
-                + hit_50 as f64)
-                / ((hit_geki + hit_300 + hit_katu + hit_100 + hit_50 + hit_miss) as f64 * 6.)
-        }
-        _ => {
-            panic!("Unsupported gamemode: {}", gamemode); // Gestion des cas imprévus
-        }
+
+pub fn get_result_hits(p: &Process, state: &mut State) -> Hit {
+    let ruleset_addr = p.read_i32(state.addresses.rulesets - 0xb).unwrap();
+    let ruleset_addr = p.read_i32(ruleset_addr + 0x4).unwrap();
+    let base = p.read_i32(ruleset_addr + 0x38).unwrap();
+    Hit {
+        _300: p.read_i16(base + 0x8A).unwrap(),
+        _100: p.read_i16(base + 0x88).unwrap(),
+        _50: p.read_i16(base + 0x8C).unwrap(),
+        _miss: p.read_i16(base + 0x92).unwrap(),
+        _geki: p.read_i16(base + 0x8E).unwrap(),
+        _katu: p.read_i16(base + 0x90).unwrap(),
     }
 }
+fn calculate_accuracy(
+    gamemode: u8,
+    hit: Hit
+) -> f64 {
+    let (numerator, denominator) = match gamemode {
+        0 => (
+                hit._300 as f64 * 6.0 + hit._100 as f64 * 2.0 + hit._50 as f64,
+                (hit._300 + hit._100 + hit._50 + hit._miss) as f64 * 6.0
+        ),
+        1 => (
+                hit._300 as f64 * 2.0 + hit._100 as f64,
+                (hit._300 + hit._100 + hit._50 + hit._miss) as f64 * 2.0
+        ),
+        2 => (
+                (hit._300 + hit._100 + hit._50) as f64,
+                (hit._300 + hit._100 + hit._50 + hit._katu + hit._miss) as f64
+        ),
+        3 => (
+                (hit._geki + hit._300) as f64 * 6.0 + hit._katu as f64 * 4.0 + hit._100 as f64 * 2.0 + hit._50 as f64,
+                (hit._geki + hit._300 + hit._katu + hit._100 + hit._50 + hit._miss) as f64 * 6.0
+        ),
+        _ => panic!("Unsupported Gamemode : {}", gamemode)
+    };
+
+    numerator / denominator
+}
+
 pub fn get_result_accuracy(p: &Process, state: &mut State) -> f64 {
     calculate_accuracy(
         get_result_mode(p, state),
-        get_result_hit_300(p, state),
-        get_result_hit_100(p, state),
-        get_result_hit_50(p, state),
-        get_result_hit_geki(p, state),
-        get_result_hit_katu(p, state),
-        get_result_hit_miss(p, state),
+        get_result_hits(p,state),
     )
 }
 pub fn get_result_max_combo(p: &Process, state: &mut State) -> i16 {
     let ruleset_addr = p.read_i32(state.addresses.rulesets - 0xb).unwrap();
     let ruleset_addr = p.read_i32(ruleset_addr + 0x4).unwrap();
     let score_base = p.read_i32(ruleset_addr + 0x38).unwrap();
-    return p.read_i16(score_base + 0x68).unwrap();
+    p.read_i16(score_base + 0x68).unwrap()
 }

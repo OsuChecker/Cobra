@@ -1,0 +1,688 @@
+import { Button, VerticalBox, ScrollView,
+CheckBox, HorizontalBox, ListView, LineEdit, SpinBox, Slider } from "std-widgets.slint";
+
+export struct MapData {
+    song: string,
+    author: string,
+    creator: string,
+    cover: image,
+    link: string,
+    difficulties: string,
+    download_progress: float,
+
+}
+
+export global AppState {
+    callback toggle-pp-window(bool);
+    in-out property <bool> is_logged_in;
+    in property <string> token;
+    in-out property <int> current-page: 0;
+
+}
+
+export global MapSetState
+{
+    callback update-progress(int, float);
+    callback download(string, int);
+    in-out property <MapData> current-map;
+    in-out property <string> osu-path: "";
+    in-out property <[MapData]> maps: [];
+}
+
+component NavIcon inherits Rectangle {
+    callback clicked;
+    in property <image> icon;
+    in property <bool> active;
+
+    width: 40px;
+    height: 40px;
+    background: active ? #3a3a3a : #2a2a2a;
+    border-radius: 4px;
+
+    Image {
+        source: root.icon;
+        width: 24px;
+        height: 24px;
+        colorize: active ? #4CAF50 : #808080;
+        animate colorize { duration: 200ms; }
+    }
+
+    ta := TouchArea {
+        clicked => { root.clicked() }
+    }
+
+    states [
+        hover-active when active && ta.has-hover: {
+            background: #454545;
+        }
+        hover when ta.has-hover: {
+            background: #3a3a3a;
+        }
+    ]
+
+    animate background { duration: 200ms; }
+}
+
+
+component MapItem inherits Rectangle {
+    in property <MapData> map;
+    height: 210px;
+    background: transparent;
+    in-out property <bool> is_downloading: false;
+    in property <int> index;
+    in property <bool> hide-download-controls: false;
+
+    VerticalBox {
+        Rectangle {
+            height: 200px;
+            background: #2a2a2a;
+            border-radius: 12px;
+            clip: true;
+
+            // Image d'arrière-plan
+            Image {
+                source: map.cover;
+                width: parent.width;
+                height: parent.height;
+                image-fit: cover;
+            }
+
+            // Overlay semi-transparent
+            Rectangle {
+                width: parent.width;
+                height: parent.height;
+                background: rgba(0, 0, 0, 0.7);
+            }
+
+            // Contenu
+            HorizontalBox {
+                padding: 15px;
+
+                // Miniature
+                Rectangle {
+                    width: 180px;
+                    height: 180px;
+                    border-radius: 8px;
+                    clip: true;
+
+                    Image {
+                        source: map.cover;
+                        width: parent.width;
+                        height: parent.height;
+                        image-fit: cover;
+                    }
+                }
+
+                // Informations
+                VerticalBox {
+                    padding-left: 15px;
+                    spacing: 8px;
+
+                    Text {
+                        text: map.song;
+                        font-size: 22px;
+                        font-weight: 1;
+                        color: white;
+                    }
+
+                    Text {
+                        text: "Par " + map.author;
+                        color: #e0e0e0;
+                        font-size: 16px;
+                    }
+
+                    Text {
+                        text: "Mappé par " + map.creator;
+                        color: #e0e0e0;
+                        font-size: 16px;
+                    }
+
+                    Text {
+                        text: "Difficultés: " + map.difficulties;
+                        color: #e0e0e0;
+                        font-size: 16px;
+                    }
+
+                    if !is-downloading && !hide-download-controls : Button {
+                        text: "Télécharger";
+                        primary: true;
+                        height: 36px;
+                        width: 140px;
+
+                        clicked => {
+                            root.is-downloading = true;
+                            MapSetState.download(map.link, index)
+                        }
+                    }
+
+                    if is-downloading  && !hide-download-controls: Rectangle {
+                        height: 36px;
+                        width: 140px;
+                        background: #2a2a2a;
+                        border-radius: 4px;
+
+                        Rectangle {
+                            height: parent.height;
+                            width: parent.width * map.download-progress;
+                            background: #4CAF50;
+                            border-radius: 4px;
+                        }
+
+                        Text {
+                            text: Math.round(map.download-progress * 100) + "%";
+                            color: white;
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 10px;
+            background: transparent;
+        }
+    }
+}
+
+export global PPSettings {
+    in-out property <bool> show-background: false;
+    in-out property <color> background-color: #1a1a1a;
+    in-out property <color> text-color: #FFFFFF;
+    in-out property <length> font-size: 20px;
+    in-out property <length> window-width: 200px;
+    in-out property <length> window-height: 100px;
+    callback window-updated();
+
+}
+
+export component PPWindow inherits Window {
+    title: "PP Counter";
+    in-out property <string> pptext: "0 pp";
+    width <=> PPSettings.window-width;
+    height <=> PPSettings.window-height;
+    background: transparent;
+    callback update-text(string);
+    always-on-top: true;
+    init => {
+        PPSettings.window-updated();
+    }
+
+    Rectangle {
+        background: PPSettings.show-background ? PPSettings.background-color : transparent;
+        VerticalBox {
+            alignment: center;
+            Text {
+                text <=> pptext;
+                color: PPSettings.text-color;
+                font-size <=> PPSettings.font-size;
+            }
+        }
+    }
+}
+
+export component Playing inherits Rectangle {
+    in property <MapData> current-map;
+    background: #1a1a1a;
+    property <float> current-rate: 1.0;
+    callback request-new-graph-data() -> [float];
+    property <[float]> graph-data: [
+        3.1, 5, 8.2, 1, 7.8, 4.9, 2.1, 6.4,
+        14.0, 12.0, 15.0, 20.0, 4.12, 7.3, 6.3, 2.2,
+        8.2, 5.4, 25.0, 21.1, 13.2, 3, 7, 35,
+        8, 4, 6, 9, 3, 7
+    ];
+    in-out property <float> avg-nps :9.144;
+    in-out property <float> max-value: 35;
+
+
+    VerticalBox {
+        alignment: center;
+        spacing: 20px;
+        padding: 20px;
+
+        Text {
+            text: "Actually Playing";
+            color: white;
+            font-size: 24px;
+            horizontal-alignment: center;
+        }
+
+        MapItem {
+            hide-download-controls: true;
+            map: current-map;
+            index: 0;
+            is-downloading: false;
+        }
+
+        HorizontalBox {
+            height: 200px;
+            spacing: 20px;
+
+            // Section PP (gauche)
+            Rectangle {
+                width: 32%;
+                background: #2a2a2a;
+                border-radius: 12px;
+                padding: 15px;
+
+                VerticalBox {
+                    spacing: 10px;
+                    Text {
+                        text: "Performance Points";
+                        color: white;
+                        font-size: 18px;
+                        font-weight: 700;
+                    }
+                    Text { text: "95% : 245pp"; color: #e0e0e0; }
+                    Text { text: "98% : 285pp"; color: #e0e0e0; }
+                    Text { text: "99% : 305pp"; color: #e0e0e0; }
+                    Text { text: "100% : 320pp"; color: #e0e0e0; }
+                }
+            }
+
+        Rectangle {
+            width: 32%;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 15px;
+
+
+            VerticalBox {
+                alignment: space-between;
+
+                Text {
+                    text: "Distribution des notes";
+                    color: white;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+
+                  Rectangle {
+                      height: 120px;
+
+                      HorizontalLayout {
+                          padding: 10px;
+                          spacing: 2px;
+                          alignment: space-around;
+
+                          for value[i] in graph-data : Rectangle {
+                              width: 8px;
+                              height: (value / max-value) * 100px;
+                              background: #4CAF50;
+                              border-radius: 2px;
+                              y: parent.height - self.height; // Ajout de cette ligne
+                          }
+                      }
+
+                      Rectangle {
+                          x: 0px;
+                          width: parent.width;
+                          height: 2px;
+                          background: #FFA726;
+                          property <length> calculated-y: parent.height - (avg-nps / max-value * parent.height);
+                          y: calculated-y;
+                      }
+                  }
+            }
+        }
+
+
+
+           Rectangle {
+                           width: 32%;
+                           background: #2a2a2a;
+                           border-radius: 12px;
+                           padding: 15px;
+
+                           VerticalBox {
+                               spacing: 15px;
+                               alignment: center;
+
+                               Text {
+                                   text: "Vitesse de lecture";
+                                   color: white;
+                                   font-size: 18px;
+                                   font-weight: 700;
+                               }
+
+                               Text {
+                                   text: Math.round(current-rate * 100) + "%";
+                                   color: #4CAF50;
+                                   font-size: 24px;
+                                   font-weight: 700;
+                               }
+
+                               Slider {
+                                   width: 80%;
+                                   minimum: 0.5;
+                                   maximum: 2.0;
+                                   value: current-rate;
+                                   changed(val) => {
+                                       current-rate = val;
+                                   }
+                               }
+
+                               HorizontalBox {
+                                   spacing: 10px;
+                                   alignment: center;
+
+                                   for rate in [0.75, 1.0, 1.25, 1.5] : Button {
+                                       text: Math.round(rate * 100) + "%";
+                                       clicked => {
+                                           current-rate = rate;
+                                       }
+                                       height: 30px;
+                                       width: 60px;
+                                   }
+                               }
+                           }
+            }
+        }
+    }
+}
+
+
+export component LoginPage inherits Window {
+    width: 1280px;
+    height: 720px;
+    background: #1a1a1a;
+
+    callback login-requested();
+    out property <string> ausername;
+    out property <string> apassword;
+    in-out property <bool> disabled: false;
+    callback load-more();
+    in-out property <bool> is_loading: false;
+    in-out property<int> current_page: 0;
+
+    padding-bottom: 10px;
+    if !AppState.is_logged_in :
+        VerticalBox {
+            alignment: center;
+            padding: 40px;
+            spacing: 20px;
+            y: -50px;
+
+            Rectangle {
+                height: 100px;
+                Image {
+                    source: @image-url("assets/logo.png");
+                    width: 100px;
+                    height: 100px;
+                    colorize: #808080;
+                }
+            }
+
+              HorizontalBox {
+                  alignment: center;  // Centre horizontalement
+
+                  VerticalBox {
+                      alignment: center;
+                      Text {
+                          text: "Login";
+                          font-size: 24px;
+                          width: 200px;
+                          color: white;
+                          horizontal-alignment: center;
+                      }
+
+                      LineEdit {
+                          placeholder-text: "UUID";
+                          height: 35px;
+                          width: 200px;
+                          font-size: 14px;
+                          text <=> root.ausername;
+                      }
+
+                      LineEdit {
+                          placeholder-text: "Password";
+                          input-type: InputType.password;
+                          width: 200px;
+                          height: 35px;
+                          font-size: 14px;
+                          text <=> root.apassword;
+                      }
+
+                      Button {
+                          text: "Login";
+                          primary: true;
+                          height: 40px;
+                          width: 140px;
+                          enabled: !root.disabled;
+                          clicked => {
+                              root.disabled = true;
+                              login-requested();
+                              load-more();
+                          }
+                      }
+                  }
+        }
+    }
+
+   if AppState.is_logged_in : VerticalBox {
+          Rectangle {
+              height: 50px;
+              background: #2a2a2a;
+
+              HorizontalBox {
+                  padding: 5px;
+                  spacing: 10px;
+                  alignment: start;
+
+                  NavIcon {
+                      icon: @image-url("icons/bus-solid.svg");
+                      active: AppState.current-page == 0;
+                      clicked => { AppState.current-page = 0; }
+                  }
+
+                   NavIcon {
+                      icon: @image-url("icons/video-solid.svg");
+                      active: AppState.current-page == 1;
+                      clicked => { AppState.current-page = 1; }
+                  }
+                  NavIcon {
+                         icon: @image-url("icons/cloud-solid.svg");
+                         active: AppState.current-page == 2;
+                         clicked => { AppState.current-page = 2; }
+                     }
+
+                  NavIcon {
+                      icon: @image-url("icons/cogs-solid.svg");
+                      active: AppState.current-page == 3;
+                      clicked => { AppState.current-page = 3; }
+                  }
+              }
+          }
+
+          // Contenu principal
+          if AppState.current-page == 0 : ScrollView {
+              ListView {
+
+
+                  for map[index] in MapSetState.maps: MapItem {
+                      map: map;
+                      index: index;
+                  }
+              }
+              Button {
+                      text: "Charger plus de maps";
+                      clicked => {
+                          // Appel de la callback
+                          root.load-more();
+                      }
+              }
+
+          }
+
+          if AppState.current-page == 1 :
+               Playing {
+                   current-map: MapSetState.maps[0];  // Vous devrez définir cette propriété
+               }
+
+          if AppState.current-page == 2 :
+               Rectangle {
+                   background: #1a1a1a;
+                   VerticalBox {
+                       alignment: center;
+                       spacing: 16px;
+                       padding: 20px;
+
+                       Text {
+                           text: "PP Counter settings";
+                           color: white;
+                           font-size: 24px;
+                       }
+
+                       CheckBox {
+                           text: "Afficher PP Counter";
+                           checked: false;
+                           toggled => {
+                               if (self.checked) {
+                                   AppState.toggle-pp-window(self.checked);
+                               }
+                           }
+                       }
+
+                       CheckBox {
+                           text: "Afficher l'arrière-plan";
+                           checked: PPSettings.show-background;
+                           toggled => {
+                               PPSettings.show-background = self.checked;
+                           }
+                       }
+
+                       // Prédéfinitions de couleurs pour le texte
+                       VerticalBox {
+                           Text {
+                               text: "Couleur du texte:";
+                               color: white;
+                           }
+                           HorizontalBox {
+                               spacing: 8px;
+                               Button {
+                                   text: "Blanc";
+                                   clicked => { PPSettings.text-color = #FFFFFF; }
+                               }
+                               Button {
+                                   text: "Vert";
+                                   clicked => { PPSettings.text-color = #4CAF50; }
+                               }
+                               Button {
+                                   text: "Bleu";
+                                   clicked => { PPSettings.text-color = #2196F3; }
+                               }
+                               Button {
+                                   text: "Rouge";
+                                   clicked => { PPSettings.text-color = #f44336; }
+                               }
+                           }
+                       }
+
+                       // Prédéfinitions de couleurs pour l'arrière-plan
+                       VerticalBox {
+                           Text {
+                               text: "Couleur d'arrière-plan:";
+                               color: white;
+                           }
+                           HorizontalBox {
+                               spacing: 8px;
+                               Button {
+                                   text: "Noir";
+                                   clicked => { PPSettings.background-color = #1a1a1a; }
+                               }
+                               Button {
+                                   text: "Gris foncé";
+                                   clicked => { PPSettings.background-color = #2a2a2a; }
+                               }
+                               Button {
+                                   text: "Gris";
+                                   clicked => { PPSettings.background-color = #3a3a3a; }
+                               }
+                               Button {
+                                   text: "Semi-transparent";
+                                   clicked => { PPSettings.background-color = rgba(0, 0, 0, 0.7); }
+                               }
+                           }
+                       }
+
+                       HorizontalBox {
+                           spacing: 8px;
+                           Text {
+                               text: "Taille du texte:";
+                               color: white;
+                           }
+                           SpinBox {
+                               value: PPSettings.font-size / 1px;
+                               minimum: 12;
+                               maximum: 48;
+                               edited => {
+                                   PPSettings.font-size = self.value * 1px;
+                                   PPSettings.window-updated();
+
+                               }
+                           }
+                       }
+
+                       HorizontalBox {
+                           spacing: 8px;
+                           Text {
+                               text: "Largeur de la fenêtre:";
+                               color: white;
+                           }
+                           SpinBox {
+                               value: PPSettings.window-width / 1px;
+                               minimum: 100;
+                               maximum: 500;
+                               edited => {
+                                   PPSettings.window-width = self.value * 1px;
+                                                                      PPSettings.window-updated();
+                               }
+                           }
+                       }
+
+                       HorizontalBox {
+                           spacing: 8px;
+                           Text {
+                               text: "Hauteur de la fenêtre:";
+                               color: white;
+                           }
+                           SpinBox {
+                               value: PPSettings.window-height / 1px;
+                               minimum: 50;
+                               maximum: 300;
+                               edited => {
+                                   PPSettings.window-height = self.value * 1px;
+                               }
+                           }
+                       }
+                   }
+               }
+
+
+
+          if AppState.current-page == 3 :
+          Rectangle {
+              background: #1a1a1a;
+              VerticalBox {
+                  alignment: center;
+                  Text {
+                      text: "Settings";
+                      color: white;
+                      font-size: 24px;
+                  }
+
+                  LineEdit {
+                        text <=> MapSetState.osu-path;
+
+                        placeholder-text: "Osu song path for auto install";
+                        width: 300px;
+
+                  }
+          }
+    }
+    }
+}
+
