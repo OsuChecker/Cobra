@@ -50,7 +50,7 @@ The project is in its early stages, but contributions are welcome! Feel free to 
 
 ## 📝 License
 
-[License information to be added]
+SOON
 
 ---
 
