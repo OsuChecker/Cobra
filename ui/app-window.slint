@@ -9,7 +9,7 @@ export struct MapData {
     link: string,
     difficulties: string,
     download_progress: float,
-
+    md5 : string,
 }
 
 export global AppState {
@@ -17,7 +17,8 @@ export global AppState {
     in-out property <bool> is_logged_in;
     in property <string> token;
     in-out property <int> current-page: 0;
-
+    in-out property <MapData> map;
+    callback update_map(MapData);
 }
 
 export global MapSetState
@@ -519,7 +520,7 @@ export component LoginPage inherits Window {
 
           if AppState.current-page == 1 :
                Playing {
-                   current-map: MapSetState.maps[0];  // Vous devrez définir cette propriété
+                   current-map: AppState.map;  // Vous devrez définir cette propriété
                }
 
           if AppState.current-page == 2 :

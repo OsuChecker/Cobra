@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use rosu_mem::process::{Process, ProcessTraits};
-use crate::reader::structs::{Hit, State};
+use crate::reader::structs::{Hit, ResultScreenValues, State};
 
 pub fn get_result_username(p: &Process, state: &mut State) -> String {
     let ruleset_addr = p.read_i32(state.addresses.rulesets - 0xb).unwrap();
@@ -110,4 +110,15 @@ pub fn get_result_max_combo(p: &Process, state: &mut State) -> i16 {
     let ruleset_addr = p.read_i32(ruleset_addr + 0x4).unwrap();
     let score_base = p.read_i32(ruleset_addr + 0x38).unwrap();
     p.read_i16(score_base + 0x68).unwrap()
+}
+
+pub fn get_result_screen(p: &Process, state: &mut State) -> ResultScreenValues {
+    ResultScreenValues{
+            username: get_result_username(p,state),
+            mode :  get_result_mode(p,state),
+            max_combo : get_result_max_combo(p,state),
+            score : get_result_score(p,state),
+            hit : get_result_hits(p,state),
+            accuracy : get_result_accuracy(p,state),
+    }
 }

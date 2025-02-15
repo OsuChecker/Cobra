@@ -5,7 +5,7 @@ use rosu_mem::{
 };
 
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct StaticAddresses {
     pub base: i32,
     pub status: i32,
@@ -18,6 +18,7 @@ pub struct StaticAddresses {
     pub ig_time_base : i32,
 }
 
+#[derive(Debug, Default)]
 pub struct Hit{
     pub _geki:i16,
     pub _300:i16,
@@ -75,7 +76,80 @@ impl InnerValues {
     }
 }
 */
-
+#[derive(Default,Clone)]
 pub struct State {
     pub addresses: StaticAddresses,
+}
+
+#[derive( Debug, Default, PartialEq, Eq, Clone, Copy)]
+#[repr(u32)]
+pub enum GameState {
+    PreSongSelect = 0,
+    Playing = 2,
+    SongSelect = 5,
+    EditorSongSelect = 4,
+    ResultScreen = 7,
+    MultiplayerLobbySelect = 11,
+    MultiplayerLobby = 12,
+    MultiplayerResultScreen = 14,
+
+    #[default]
+    Unknown,
+}
+
+impl From<u32> for GameState {
+    fn from(value: u32) -> Self {
+        match value {
+            0 => Self::PreSongSelect,
+            2 => Self::Playing,
+            4 => Self::EditorSongSelect,
+            5 => Self::SongSelect,
+            7 => Self::ResultScreen,
+            11 => Self::MultiplayerLobbySelect,
+            12 => Self::MultiplayerLobby,
+            14 => Self::MultiplayerResultScreen,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+
+#[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
+#[repr(i16)]
+pub enum BeatmapStatus {
+    #[default]
+    Unknown = 0,
+    Unsubmitted = 1,
+    Unranked = 2,
+    Unused = 3,
+    Ranked = 4,
+    Approved = 5,
+    Qualified = 6,
+    Loved = 7,
+}
+
+impl From<i16> for BeatmapStatus {
+    fn from(value: i16) -> Self {
+        match value {
+            1 => Self::Unsubmitted,
+            2 => Self::Unranked,
+            3 => Self::Unused,
+            4 => Self::Ranked,
+            5 => Self::Approved,
+            6 => Self::Qualified,
+            7 => Self::Loved,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+
+#[derive(Debug, Default)]
+pub struct ResultScreenValues {
+    pub username: String,
+    pub mode: u8,
+    pub max_combo: i16,
+    pub score: i32,
+    pub hit : Hit,
+    pub accuracy: f64,
 }

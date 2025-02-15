@@ -13,6 +13,8 @@ use tokio;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use std::sync::Mutex;
+use futures_util::future::Shared;
+use crate::reader::controlla;
 use crate::utils::api::Api;
 use crate::structs::MapSet;
 use crate::structs::Map;
@@ -41,6 +43,16 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
     login_page.global::<AppState>().set_token(SharedString::from(""));
     login_page.global::<AppState>().set_current_page(0);
 
+    let weak = login_page.as_weak();
+
+
+    let weak_clone2 = weak.clone();
+    tokio::spawn(async move {
+        controlla(weak_clone2);
+    });
+
+
+
     let window_handle = login_page.as_weak();
     let api_for_closure = api.clone();
 
@@ -57,7 +69,15 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
 
 
 
+    login_page.global::<AppState>().on_update_map(move |map_data| {
+        if let Some(handle) = window_handle.clone().upgrade() {
+            println!("called");
+            handle.global::<AppState>().set_map(map_data);
+        }
+    });
 
+
+    let window_handle = login_page.as_weak();
 
     login_page.global::<AppState>().on_toggle_pp_window(move |checked| {
         if checked {
@@ -259,6 +279,7 @@ fn update_ui(
                 },
                 link: SharedString::from(&map_set.link),
                 difficulties: SharedString::from(difficulties),
+                md5 : SharedString::from(String::new()),
                 download_progress: 0.0,
             };
 
