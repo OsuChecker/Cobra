@@ -1,5 +1,6 @@
 mod structs;
 mod mania;
+
 use ::std::error::Error;
 use reqwest::blocking;
 use rosu_map;

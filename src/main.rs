@@ -2,6 +2,7 @@ mod utils;
 mod structs;
 mod reader;
 
+use std::path::Path;
 use std::sync::Arc;
 use futures_util::StreamExt;
 use reqwest;
@@ -18,6 +19,7 @@ use crate::reader::controlla;
 use crate::utils::api::Api;
 use crate::structs::MapSet;
 use crate::structs::Map;
+use crate::utils::rate::{change_audio_speed, change_osu_speed};
 
 ///
 /// SLINT MODULE SI JE LE DELETE ENCORE JE SUIS UNE PUTE
@@ -68,7 +70,30 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
             handle.global::<AppState>().set_map(map_data);
         }
     });
+    let window_handle = login_page.as_weak();
 
+    login_page.global::<AppState>().on_change_rate(move |rate| {
+        println!("called");
+        if let Some(handle) = window_handle.upgrade() {
+            println!("called");
+            let input_path = handle.global::<AppState>().get_audio_path().to_string();
+            let file_path = handle.global::<AppState>().get_osu_path().to_string();
+            let input_path = Path::new(&input_path);
+            let parent = input_path.parent().unwrap_or(Path::new(""));
+            let new_filename = format!("audio_{}.ogg", (rate * 100.0) as i32);
+            let output_path = parent.join(new_filename.clone());
+
+
+            let output_path =output_path.display().to_string();
+            let input_path = input_path.display().to_string();
+
+            if let Err(err) = change_audio_speed(&input_path, &output_path, rate) {
+                eprintln!("Erreur lors du changement de vitesse audio : {:#}", err);
+            }
+            change_osu_speed(& file_path, rate, &new_filename);
+        }
+
+    });
 
     let window_handle = login_page.as_weak();
 

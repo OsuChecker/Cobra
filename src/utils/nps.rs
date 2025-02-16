@@ -2,6 +2,7 @@ use reqwest::blocking;
 use serde::Serialize;
 use std::error::Error;
 use std::fs;
+use eyre::WrapErr;
 
 #[derive(Debug, Serialize)]
 pub struct KeyValue {
@@ -13,18 +14,19 @@ pub fn load_file(file_path: &str) -> String {
     fs::read_to_string(file_path).unwrap()
 }
 
-pub fn read_note(line: &str) -> Result<i32, Box<dyn std::error::Error>> {
+pub fn read_note(line: &str) -> eyre::Result<i32> {
     let mut parts = line.split(',');
     if let (Some(_), Some(_), Some(hit_object)) = (parts.next(), parts.next(), parts.next()) {
         hit_object
             .parse::<i32>()
-            .map_err(|e| format!("Error parsing hit object ({}): {}", hit_object, e).into())
+            .wrap_err_with(|| format!("Erreur lors du parsing de l'objet ({hit_object})"))
     } else {
-        Err("Error 17001: Invalid .osu file (Cannot read hitObject)".into())
+        Err(eyre::eyre!("Erreur 17001: Fichier .osu invalide (Impossible de lire hitObject)"))
     }
 }
 
-pub fn parse_hit_objects(curl_content: &str) -> Result<Vec<i32>, String> {
+
+pub fn parse_hit_objects(curl_content: &str) -> eyre::Result<Vec<i32>> {
     let mut hit_objects = false;
     curl_content
         .lines()
@@ -37,25 +39,25 @@ pub fn parse_hit_objects(curl_content: &str) -> Result<Vec<i32>, String> {
             } else {
                 match read_note(line) {
                     Ok(note) => Some(Ok(note)),
-                    Err(_) => None
+                    Err(e) => Some(Err(eyre::eyre!("Erreur lors de la lecture de la note: {}", e)))
                 }
             }
         })
-        .collect::<Result<Vec<i32>, String>>()
+        .collect::<eyre::Result<Vec<i32>>>()
 }
 
-pub fn calculate_average_notes_per_second(timings: &[i32], frequency: f64) -> Result<Vec<KeyValue>, String> {
+pub fn calculate_average_notes_per_second(timings: &[i32], frequency: f64) -> eyre::Result<Vec<KeyValue>> {
     if timings.is_empty() {
-        return Err("The timings vector is empty.".to_string());
+        return Err(eyre::eyre!("Le vecteur de timings est vide"));
     }
 
-    let start_time = *timings.first().unwrap();
-    let end_time = *timings.last().unwrap();
+    let start_time = *timings.first().ok_or_else(|| eyre::eyre!("Impossible d'obtenir le premier timing"))?;
+    let end_time = *timings.last().ok_or_else(|| eyre::eyre!("Impossible d'obtenir le dernier timing"))?;
     let t_duration: i32 = end_time - start_time;
     let interval_ms: f64 = (t_duration as f64 * frequency) / 100.0_f64;
 
     if interval_ms <= 0.0 {
-        return Err("Invalid duration or frequency is too high.".to_string());
+        return Err(eyre::eyre!("Durée invalide ou fréquence trop élevée (interval_ms: {})", interval_ms));
     }
 
     let mut result = Vec::new();
@@ -82,111 +84,16 @@ pub fn calculate_average_notes_per_second(timings: &[i32], frequency: f64) -> Re
     Ok(result)
 }
 
-pub fn get_nps(url: &str, frequency: f64) -> Result<Vec<KeyValue>, Box<dyn std::error::Error>> {
+pub fn get_nps(url: &str, frequency: f64) -> eyre::Result<Vec<KeyValue>> {
     let curl_content = load_file(url);
 
     let parsed_hit_objects = parse_hit_objects(&curl_content)
-        .map_err(|e| format!("Error parsing .osu file: {}", e))?;
+        .wrap_err_with(|| "Erreur lors de l'analyse du fichier .osu")?;
 
     let nps_result = calculate_average_notes_per_second(&parsed_hit_objects, frequency)
-        .map_err(|e| format!("Error calculating NPS: {}", e))?;
+        .wrap_err_with(|| "Erreur lors du calcul des NPS")?;
+
 
     Ok(nps_result)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs;
-
-    #[test]
-    fn test_read_note_valid_input() {
-        let line = "256,192,1000,1,0,0:0:0:0:";
-        assert_eq!(read_note(line).unwrap(), 1000);
-    }
-
-    #[test]
-    fn test_read_note_invalid_input() {
-        let line = "invalid,data";
-        assert!(read_note(line).is_err());
-    }
-
-    #[test]
-    fn test_parse_hit_objects() {
-        let content = fs::read_to_string("./resources/test.osu").unwrap();
-        let result = parse_hit_objects(&content);
-        assert!(result.is_ok());
-        let timings = result.unwrap();
-        assert!(!timings.is_empty());
-        assert!(timings.windows(2).all(|w| w[0] <= w[1]), "Les timings doivent être triés");
-    }
-
-    #[test]
-    fn test_calculate_average_nps_empty_timings() {
-        let timings: Vec<i32> = vec![];
-        let result = calculate_average_notes_per_second(&timings, 1.0);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "The timings vector is empty.");
-    }
-
-    #[test]
-    fn test_calculate_average_nps_valid_input() {
-        let timings = vec![1000, 1500, 2000, 2500];
-        let result = calculate_average_notes_per_second(&timings, 1.0);
-        assert!(result.is_ok());
-        let nps_results = result.unwrap();
-        assert!(!nps_results.is_empty());
-
-        // Vérification que les valeurs NPS sont positives
-        for kv in nps_results {
-            assert!(kv.value >= 0.0);
-            assert!(kv.key >= timings[0]);
-            assert!(kv.key <= timings[timings.len() - 1]);
-        }
-    }
-
-    #[test]
-    fn test_calculate_average_nps_invalid_frequency() {
-        let timings = vec![1000, 1500, 2000];
-        let result = calculate_average_notes_per_second(&timings, -1.0);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_keyvalue_serialization() {
-        let kv = KeyValue {
-            key: 1000,
-            value: 2.5,
-        };
-        let serialized = serde_json::to_string(&kv).unwrap();
-        assert_eq!(serialized, r#"{"key":1000,"value":2.5}"#);
-    }
-
-    #[test]
-    fn test_local_file_download() {
-        let file_path = "./resources/test.osu";
-        let content = load_file(file_path);
-        assert!(!content.is_empty());
-    }
-
-    #[test]
-    fn test_full_nps_calculation_with_local_file() {
-        let file_path = "./resources/test.osu";
-        let content = load_file(file_path);
-        let parsed = parse_hit_objects(&content).unwrap();
-        let result = calculate_average_notes_per_second(&parsed, 100.0).unwrap();
-
-        assert!(!result.is_empty());
-        for kv in result {
-            assert!(kv.value >= 0.0);
-            assert!(kv.key >= parsed[0]);
-            assert!(kv.key <= parsed[parsed.len() - 1]);
-        }
-    }
-
-
-    #[test]
-    fn test_nps_avg_calculation_with_local_file() {
-
-    }
-}

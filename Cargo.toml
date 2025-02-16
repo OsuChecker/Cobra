@@ -22,6 +22,19 @@ lazy_static = "1.5.0"
 parking_lot = "0.12.3"
 rosu-pp = "2.0.0"
 rosu-map = "0.2.0"
+rayon = "1.10.0"
+symphonia = { version = "0.5.4", features = [
+    "mp3",
+    "wav",
+    "aac",
+    "pcm",
+    "isomp4"
+]}
+
+rubato = "0.14.1"
+hound = "3.5.1"
+vorbis-encoder = "0.1.4"
+
 
 
 [build-dependencies]

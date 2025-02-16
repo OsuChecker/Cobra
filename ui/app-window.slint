@@ -25,14 +25,16 @@ export global AppState {
             8.2, 5.4, 25.0, 21.1, 13.2, 3, 7, 35,
             8, 4, 6, 9, 3, 7
     ];
-        in-out property <float> avg-nps :9.144;
-        in-out property <float> max-value: 35;
+    in-out property <float> avg-nps :9.144;
+    in-out property <float> max-value: 35;
     in-out property <string> pp_text1;
     in-out property <string> pp_text2;
     in-out property <string> pp_text3;
     in-out property <string> pp_text4;
     in-out property <[string]> patterns;
-
+    in-out property <string> audio_path;
+    in-out property <string> osu_path;
+    callback change_rate(float);
 }
 
 export global MapSetState
@@ -289,7 +291,6 @@ export component Playing inherits Rectangle {
                     }
                 }
 
-                // Rectangle de droite pour les Motifs
                 Rectangle {
                     width: 32%;
                     background: #2a2a2a;
@@ -298,6 +299,8 @@ export component Playing inherits Rectangle {
 
                     VerticalBox {
                         spacing: 10px;
+                        alignment: start;
+
                         Text {
                             text: "Motifs";
                             color: white;
@@ -334,7 +337,7 @@ export component Playing inherits Rectangle {
                 alignment: space-between;
 
                 Text {
-                    text: "Distribution des notes";
+                    text: "NPS";
                     color: white;
                     font-size: 18px;
                     font-weight: 700;
@@ -382,7 +385,7 @@ export component Playing inherits Rectangle {
                                alignment: center;
 
                                Text {
-                                   text: "Vitesse de lecture";
+                                   text: "Rate";
                                    color: white;
                                    font-size: 18px;
                                    font-weight: 700;
@@ -418,6 +421,15 @@ export component Playing inherits Rectangle {
                                        width: 60px;
                                    }
                                }
+                                       Button {
+                                           text: "Submit";
+                                           primary: true;
+                                           height: 40px;
+                                           clicked => {
+                                               AppState.change_rate(current-rate);
+                                           }
+                                       }
+
                            }
             }
         }
