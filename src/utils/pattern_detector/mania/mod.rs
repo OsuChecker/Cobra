@@ -1,7 +1,7 @@
-use crate::mania::detector::{analyze_patterns_by_measures_advanced, analyze_patterns_tertiary};
-use crate::mania::transform::{group_notes_by_measures, transform_hit_object_to_mania_notes};
 use rosu_map::Beatmap;
 use serde_json::json;
+use crate::utils::pattern_detector::mania::detector::{analyze_patterns_by_measures_advanced, analyze_patterns_tertiary};
+use crate::utils::pattern_detector::mania::transform::{group_notes_by_measures, transform_hit_object_to_mania_notes};
 
 mod structs;
 mod detector;

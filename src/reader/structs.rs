@@ -16,6 +16,7 @@ pub struct StaticAddresses {
     pub chat_checker: i32,
     pub audio_time_base: i32,
     pub ig_time_base : i32,
+    pub settings : i32,
 }
 
 #[derive(Debug, Default)]
@@ -47,6 +48,8 @@ impl StaticAddresses {
         let audio_time_base = Signature::from_str("DB 5C 24 34 8B 44 24 34")?;
 
         let ig_time_base = Signature::from_str("EB 0A A1 ?? ?? ?? ?? A3")?;
+
+        let settings_base = Signature::from_str("83 E0 20 85 C0 7E 2F")?;
         Ok(Self {
             base: p.read_signature(&base_sign)?,
             status: p.read_signature(&status_sign)?,
@@ -57,6 +60,7 @@ impl StaticAddresses {
             chat_checker: p.read_signature(&chat_checker)?,
             audio_time_base: p.read_signature(&audio_time_base)?,
             ig_time_base: p.read_signature(&ig_time_base)?,
+            settings: p.read_signature(&settings_base)?,
         })
     }
 }

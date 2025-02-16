@@ -19,6 +19,20 @@ export global AppState {
     in-out property <int> current-page: 0;
     in-out property <MapData> map;
     callback update_map(MapData);
+    in-out property <[float]> graph-data: [
+            3.1, 5, 8.2, 1, 7.8, 4.9, 2.1, 6.4,
+            14.0, 12.0, 15.0, 20.0, 4.12, 7.3, 6.3, 2.2,
+            8.2, 5.4, 25.0, 21.1, 13.2, 3, 7, 35,
+            8, 4, 6, 9, 3, 7
+    ];
+        in-out property <float> avg-nps :9.144;
+        in-out property <float> max-value: 35;
+    in-out property <string> pp_text1;
+    in-out property <string> pp_text2;
+    in-out property <string> pp_text3;
+    in-out property <string> pp_text4;
+    in-out property <[string]> patterns;
+
 }
 
 export global MapSetState
@@ -228,16 +242,6 @@ export component Playing inherits Rectangle {
     in property <MapData> current-map;
     background: #1a1a1a;
     property <float> current-rate: 1.0;
-    callback request-new-graph-data() -> [float];
-    property <[float]> graph-data: [
-        3.1, 5, 8.2, 1, 7.8, 4.9, 2.1, 6.4,
-        14.0, 12.0, 15.0, 20.0, 4.12, 7.3, 6.3, 2.2,
-        8.2, 5.4, 25.0, 21.1, 13.2, 3, 7, 35,
-        8, 4, 6, 9, 3, 7
-    ];
-    in-out property <float> avg-nps :9.144;
-    in-out property <float> max-value: 35;
-
 
     VerticalBox {
         alignment: center;
@@ -262,27 +266,62 @@ export component Playing inherits Rectangle {
             height: 200px;
             spacing: 20px;
 
-            // Section PP (gauche)
-            Rectangle {
-                width: 32%;
-                background: #2a2a2a;
-                border-radius: 12px;
-                padding: 15px;
+            HorizontalLayout {
+                spacing: 20px;
+                    Rectangle {
+                    width: 32%;
+                    background: #2a2a2a;
+                    border-radius: 12px;
+                    padding: 15px;
 
-                VerticalBox {
-                    spacing: 10px;
-                    Text {
-                        text: "Performance Points";
-                        color: white;
-                        font-size: 18px;
-                        font-weight: 700;
+                    VerticalBox {
+                        spacing: 10px;
+                        Text {
+                            text: "Performance Points";
+                            color: white;
+                            font-size: 18px;
+                            font-weight: 700;
+                        }
+                        Text { text <=> AppState.pp_text1; color: #e0e0e0; }
+                        Text { text <=> AppState.pp_text2; color: #e0e0e0; }
+                        Text { text <=> AppState.pp_text3; color: #e0e0e0; }
+                        Text { text <=> AppState.pp_text4; color: #e0e0e0; }
                     }
-                    Text { text: "95% : 245pp"; color: #e0e0e0; }
-                    Text { text: "98% : 285pp"; color: #e0e0e0; }
-                    Text { text: "99% : 305pp"; color: #e0e0e0; }
-                    Text { text: "100% : 320pp"; color: #e0e0e0; }
+                }
+
+                // Rectangle de droite pour les Motifs
+                Rectangle {
+                    width: 32%;
+                    background: #2a2a2a;
+                    border-radius: 12px;
+                    padding: 15px;
+
+                    VerticalBox {
+                        spacing: 10px;
+                        Text {
+                            text: "Motifs";
+                            color: white;
+                            font-size: 18px;
+                            font-weight: 700;
+                        }
+                        for pattern[index] in AppState.patterns: Rectangle {
+                            height: 30px;
+                            background: #2b5c9c;
+                            border-radius: 6px;
+                            padding: 5px;
+
+                            Text {
+                                text: pattern;
+                                color: #e0e0e0;
+                                vertical-alignment: center;
+                                horizontal-alignment: center;
+                            }
+                        }
+
+                    }
                 }
             }
+
 
         Rectangle {
             width: 32%;
@@ -309,12 +348,12 @@ export component Playing inherits Rectangle {
                           spacing: 2px;
                           alignment: space-around;
 
-                          for value[i] in graph-data : Rectangle {
-                              width: 8px;
-                              height: (value / max-value) * 100px;
+                          for value[i] in AppState.graph-data : Rectangle {
+                              width: 1px;
+                              height: (value / AppState.max-value) * 100px;
                               background: #4CAF50;
                               border-radius: 2px;
-                              y: parent.height - self.height; // Ajout de cette ligne
+                              y: parent.height - self.height;
                           }
                       }
 
@@ -323,7 +362,7 @@ export component Playing inherits Rectangle {
                           width: parent.width;
                           height: 2px;
                           background: #FFA726;
-                          property <length> calculated-y: parent.height - (avg-nps / max-value * parent.height);
+                          property <length> calculated-y: parent.height - (AppState.avg-nps / AppState.max-value * parent.height);
                           y: calculated-y;
                       }
                   }

@@ -20,6 +20,8 @@ rosu-mem = { git = "https://github.com/486c/rosu-mem.git", tag = "v1.0.0" }
 eyre = "0.6.12"
 lazy_static = "1.5.0"
 parking_lot = "0.12.3"
+rosu-pp = "2.0.0"
+rosu-map = "0.2.0"
 
 
 [build-dependencies]

@@ -39,7 +39,7 @@ This project is currently under active development. The core architecture is est
 ## 🔜 Planned Features
 
 - Enhanced pattern detection algorithms (See osu!pattern detector for more informations)
-- Advanced statistics display (Distribution hit graph on result screen, choke part, automatic training part creation)
+- Advanced statistics display (Distribution hit graph on result screen, choke part, 
 - Skin Editor Support
 - Performance optimization tools
 - Community integration features

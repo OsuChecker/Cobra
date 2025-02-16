@@ -43,13 +43,6 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
     login_page.global::<AppState>().set_token(SharedString::from(""));
     login_page.global::<AppState>().set_current_page(0);
 
-    let weak = login_page.as_weak();
-
-
-    let weak_clone2 = weak.clone();
-    tokio::spawn(async move {
-        controlla(weak_clone2);
-    });
 
 
 
@@ -207,7 +200,11 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
             });
         }
     });
+    let weak = login_page.as_weak();
 
+    tokio::spawn(async move {
+        controlla(weak);
+    });
     login_page.show();
     slint::run_event_loop();
     Ok(())

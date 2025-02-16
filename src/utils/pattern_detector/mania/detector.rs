@@ -1,8 +1,9 @@
-use crate::mania::structs::{BasePattern, ManiaMeasure, SecondaryPattern, TertiaryPattern};
-use std::collections::{BTreeMap, HashMap};
-use crate::mania::structs::TertiaryPattern::JT;
 
-pub(crate) fn detect_primary_pattern_4k(note: &crate::mania::structs::Notes) -> BasePattern {
+use std::collections::{BTreeMap, HashMap};
+use crate::utils::pattern_detector::mania::structs::{BasePattern, ManiaMeasure, Notes, SecondaryPattern, TertiaryPattern};
+use crate::utils::pattern_detector::mania::structs::TertiaryPattern::{JT, SINGLESTREAM};
+
+pub(crate) fn detect_primary_pattern_4k(note: &Notes) -> BasePattern {
     let count = note.notes.iter().filter(|&&n| n).count();
 
     fn get_pattern(number: usize) -> BasePattern {
@@ -118,6 +119,10 @@ pub(crate) fn analyze_patterns_tertiary(
         }
         else if measure.secondary_pattern==SecondaryPattern::Handstream{
             let key = check_hs(measure);
+            *map.entry(key).or_insert(0.0) += density_factor;
+        }
+        else if measure.secondary_pattern==SecondaryPattern::Singlestream{
+            let key = SINGLESTREAM;
             *map.entry(key).or_insert(0.0) += density_factor;
         }
 

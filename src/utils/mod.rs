@@ -1,2 +1,4 @@
 pub mod api;
-mod nps;
+pub mod nps;
+
+pub mod pattern_detector;
