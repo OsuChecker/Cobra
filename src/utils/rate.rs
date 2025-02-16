@@ -188,25 +188,27 @@ pub fn change_osu_speed(input_path: &str, rate: f32, audio_path: &str) {
     map.audio_file = audio_path.to_string();
     map.version = format!("{} {:.2}x", map.version, rate);
     for point in map.control_points.timing_points.iter_mut() {
-        point.time = (point.time as f64 * multiplier) as f64;
-        point.beat_len = (point.beat_len as f64 * multiplier) as f64;
+        point.time = (point.time * multiplier).floor();
+        point.beat_len = (point.beat_len * multiplier).floor();
     }
     for point in map.control_points.difficulty_points.iter_mut() {
-        point.time = (point.time as f64 * multiplier) as f64;
+        point.time = (point.time * multiplier).floor();
     }
     for point in map.control_points.effect_points.iter_mut() {
-        point.time = (point.time as f64 * multiplier) as f64;
+        point.time = (point.time * multiplier).floor();
     }
     for point in map.control_points.sample_points.iter_mut() {
-        point.time = (point.time as f64 * multiplier) as f64;
+        point.time = (point.time * multiplier).floor();
     }
 
+
     for hit_object in map.hit_objects.iter_mut() {
-        hit_object.start_time = hit_object.start_time * multiplier;
+        hit_object.start_time = (hit_object.start_time * multiplier).floor();
         if let HitObjectKind::Hold(hold) = &mut hit_object.kind {
-            hold.duration = hold.duration * multiplier;
+            hold.duration = (hold.duration * multiplier).floor();
         }
     }
+
     let path = std::path::Path::new(input_path);
     let stem = path.file_stem().unwrap().to_str().unwrap();
     let parent = path.parent().unwrap();

@@ -11,6 +11,7 @@ use rosu_mem::process::{Process, ProcessTraits};
 use serde_json::Value;
 use slint::{ComponentHandle, Image, ModelRc, SharedString, VecModel, Weak};
 use std::env::Args;
+use std::os::windows::raw::HANDLE;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -80,9 +81,8 @@ pub fn waiting_for_play(p: &Process, state: &mut State, weak: Weak<LoginPage>) -
                 p,
                 state
             )?;
+            println!("{}", path);
             let img = get_cover_path(p, state)?;
-
-
             let audio = get_audio_path(p,state)?;
 
             std::thread::spawn(move || {
@@ -125,11 +125,14 @@ pub fn waiting_for_play(p: &Process, state: &mut State, weak: Weak<LoginPage>) -
                 };
 
                 handle.upgrade_in_event_loop(move |handle| {
+                    let img = Image::load_from_path(Path::new(&img)).unwrap_or_else(|_| {
+                        Image::default()
+                    });
                     let map_data = MapData {
                         song,
                         author,
                         creator,
-                        cover: Image::load_from_path(Path::new(&img)).unwrap(),
+                        cover: img,
                         link,
                         difficulties,
                         download_progress: progress,

@@ -76,6 +76,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>>
         println!("called");
         if let Some(handle) = window_handle.upgrade() {
             println!("called");
+            let rate = (rate * 100.0).round() / 100.0;
             let input_path = handle.global::<AppState>().get_audio_path().to_string();
             let file_path = handle.global::<AppState>().get_osu_path().to_string();
             let input_path = Path::new(&input_path);

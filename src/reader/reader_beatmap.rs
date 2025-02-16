@@ -83,13 +83,20 @@ pub(crate) fn get_path_folder(p: &Process, state: &mut State) -> eyre::Result<St
 
     let settings_ptr = p.read_i32(state.addresses.settings+0x8)?;
     let settings_addr = p.read_i32(settings_ptr+0xb8)?;
-    Ok(p.read_string(settings_addr+0x4)?)
+    let path = (p.read_string(settings_addr+0x4)?);
+    println!("{:?}", path.clone());
+    if path == "Songs" {
+        return Ok(format!("{}/Songs", p.executable_dir.clone().unwrap().display()));
+    }
+    Ok(path)
 }
 
 pub(crate) fn get_folder(p: &Process, state: &mut State) -> eyre::Result<String> {
     let beatmap_ptr = p.read_i32(state.addresses.base - 0xC)?;
     let beatmap_addr = p.read_i32(beatmap_ptr)?;
     Ok(p.read_string(beatmap_addr + 0x78)?)
+
+
 }
 pub(crate) fn get_filename(p: &Process, state: &mut State) -> eyre::Result<String> {
     let beatmap_ptr = p.read_i32(state.addresses.base - 0xC)?;
